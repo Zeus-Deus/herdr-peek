@@ -83,8 +83,6 @@ installs with herdr's own plugin command:
 ```bash
 herdr plugin install Zeus-Deus/herdr-peek --yes
 herdr plugin list            # peek (Peek) enabled
-# herdr clones over HTTPS: while the repo is private, run `gh auth setup-git`
-# once on each machine first (or install from a checkout as below)
 # or, from a checkout (also prints which optional viewers this machine has):
 ./scripts/install.sh
 ```
