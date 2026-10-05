@@ -1,0 +1,55 @@
+id = "peek"
+name = "Peek"
+version = "0.1.0"
+min_herdr_version = "0.9.1"
+description = "Open any file visible in a pane (images, video, PDF, docs, code) in a split"
+platforms = ["linux", "macos"]
+
+# prefix+f: letter hints on visible paths, or the current selection
+[[actions]]
+id = "pick"
+title = "Peek: pick a file on screen"
+contexts = ["pane"]
+command = ["python3", "peek/main.py", "pick"]
+
+# prefix+shift+f: newest (bottom-most) file on screen
+[[actions]]
+id = "last"
+title = "Peek: open newest file on screen"
+contexts = ["pane"]
+command = ["python3", "peek/main.py", "last"]
+
+# target for Ctrl+click on file:// links, or a selection
+[[actions]]
+id = "open"
+title = "Peek: open path"
+command = ["python3", "peek/main.py", "open"]
+
+# the viewer, reused for every file
+[[panes]]
+id = "viewer"
+title = "peek"
+placement = "split"
+command = ["python3", "peek/main.py", "view"]
+
+# same viewer as a modal popup (config: placement = "popup")
+[[panes]]
+id = "popup-viewer"
+title = "peek"
+placement = "popup"
+width = "85%"
+height = "85%"
+command = ["python3", "peek/main.py", "view"]
+
+# full-screen letter-hint picker over the active pane
+[[panes]]
+id = "picker"
+title = "peek: pick"
+placement = "overlay"
+command = ["python3", "peek/main.py", "picker"]
+
+[[link_handlers]]
+id = "file-link"
+title = "Open in peek"
+pattern = "^file://"
+action = "open"
