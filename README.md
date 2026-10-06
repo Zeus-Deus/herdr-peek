@@ -10,14 +10,38 @@ connected with `herdr machine add`.
 
 ## Quick start
 
-**1. Install the plugin** on the machine where your files are (your own
-computer, or each devbox you connected with `herdr machine add`):
+One command installs the plugin, adds the two keys (`prefix+f`,
+`prefix+shift+f`) to `~/.config/herdr/config.toml` and reloads herdr:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh
+```
+
+Then, in any pane that shows file paths, press `prefix+f` and the letter next
+to a file. `q` closes the viewer.
+
+You need Python 3 (already on almost every Linux and macOS machine) and a
+terminal that shows images: Ghostty, kitty or WezTerm. Everything else is
+optional; see [What it opens](#what-it-opens). The installer backs up your
+config first, never adds the keys twice, leaves your other bindings alone and
+warns if another binding already uses one of peek's keys.
+
+**Using a remote machine?** Install the plugin where the files are and the
+keys where you type:
+
+```bash
+# on each devbox you connected with `herdr machine add`
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --no-keys
+# on your laptop, if you don't need peek for local panes
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --keys-only
+```
+
+<details>
+<summary>Prefer to do it by hand?</summary>
 
 ```bash
 herdr plugin install Zeus-Deus/herdr-peek --yes
 ```
-
-**2. Add the two keys** on the computer you type on, and reload:
 
 ```bash
 cat >> ~/.config/herdr/config.toml <<'EOF'
@@ -36,12 +60,7 @@ EOF
 herdr server reload-config
 ```
 
-**3. Try it.** In any pane that shows file paths, press `prefix+f` and then
-the letter next to a file. `q` closes the viewer.
-
-That's all. You need Python 3 (already on almost every Linux and macOS
-machine) and a terminal that shows images: Ghostty, kitty or WezTerm.
-Everything else is optional; see [What it opens](#what-it-opens).
+</details>
 
 ## Use it
 
@@ -108,7 +127,7 @@ The viewer reuses one split per tab instead of opening new ones.
 
 Only **Python 3** is required. Every other tool is optional: without one, peek
 shows the next-best view and a one-line tip such as "install poppler for page
-rendering". `./scripts/install.sh` in a checkout prints which ones a machine
+rendering". The installer prints which ones a machine
 has.
 
 ## Install details
@@ -116,7 +135,7 @@ has.
 peek is a standard herdr plugin (manifest v1, `herdr-plugin.toml`) and installs
 with herdr's own `herdr plugin install`, as in the [Quick start](#quick-start).
 `herdr plugin list` shows it, and running the install command again updates it.
-To work from a checkout instead, run `./scripts/install.sh`, which links the
+To work from a checkout instead, run `./install.sh --link .`, which links the
 checkout, checks the optional viewers and prints the key bindings.
 
 ### Which machine needs what
@@ -131,6 +150,11 @@ to SSH hosts. With a devbox workspace selected, `prefix+f` runs the devbox's
 copy of peek, which reads the devbox's files and renders them there, and herdr
 streams the picture to your screen. If a machine doesn't have peek, the key
 shows an error and nothing else breaks.
+
+On Omarchy, which ships herdr, the config is the same
+`~/.config/herdr/config.toml` (Omarchy copies its default there once). If you
+reset it with `omarchy refresh config herdr/config.toml`, run the installer
+again to put the keys back.
 
 If `prefix+f` does nothing, run `herdr config check`: it reports a key that
 clashes with another binding. Images also need herdr's
