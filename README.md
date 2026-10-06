@@ -8,6 +8,41 @@ connected with `herdr machine add`.
 
 ![peek opening a screenshot next to an agent](docs/peek-image.png)
 
+## Quick start
+
+**1. Install the plugin** on the machine where your files are (your own
+computer, or each devbox you connected with `herdr machine add`):
+
+```bash
+herdr plugin install Zeus-Deus/herdr-peek --yes
+```
+
+**2. Add the two keys** on the computer you type on, and reload:
+
+```bash
+cat >> ~/.config/herdr/config.toml <<'EOF'
+
+# herdr-peek
+[[keys.command]]
+key = "prefix+f"
+type = "plugin_action"
+command = "peek.pick"
+
+[[keys.command]]
+key = "prefix+shift+f"
+type = "plugin_action"
+command = "peek.last"
+EOF
+herdr server reload-config
+```
+
+**3. Try it.** In any pane that shows file paths, press `prefix+f` and then
+the letter next to a file. `q` closes the viewer.
+
+That's all. You need Python 3 (already on almost every Linux and macOS
+machine) and a terminal that shows images: Ghostty, kitty or WezTerm.
+Everything else is optional; see [What it opens](#what-it-opens).
+
 ## Use it
 
 | Key | What happens |
@@ -73,51 +108,33 @@ The viewer reuses one split per tab instead of opening new ones.
 
 Only **Python 3** is required. Every other tool is optional: without one, peek
 shows the next-best view and a one-line tip such as "install poppler for page
-rendering". Run `python3 peek/main.py doctor` to see what a machine has.
+rendering". `./scripts/install.sh` in a checkout prints which ones a machine
+has.
 
-## Install
+## Install details
 
-peek is a standard herdr plugin (manifest v1, `herdr-plugin.toml`), so it
-installs with herdr's own plugin command:
+peek is a standard herdr plugin (manifest v1, `herdr-plugin.toml`) and installs
+with herdr's own `herdr plugin install`, as in the [Quick start](#quick-start).
+`herdr plugin list` shows it, and running the install command again updates it.
+To work from a checkout instead, run `./scripts/install.sh`, which links the
+checkout, checks the optional viewers and prints the key bindings.
 
-```bash
-herdr plugin install Zeus-Deus/herdr-peek --yes
-herdr plugin list            # peek (Peek) enabled
-# or, from a checkout (also prints which optional viewers this machine has):
-./scripts/install.sh
-```
-
-### Where to install it
+### Which machine needs what
 
 | Machine | Needs |
 | --- | --- |
-| Every machine whose **files** you want to open (a devbox you added with `herdr machine add`, and Local if you use local panes) | the plugin, plus any optional viewers (`magick`, `ffmpeg`, poppler, …) |
-| The machine you **type on** (your laptop running the herdr client) | the two key bindings below, and a kitty-graphics terminal (Ghostty, kitty, WezTerm) |
+| Every machine whose **files** you want to open (each devbox you added with `herdr machine add`, and your own computer if you use local panes) | the plugin, plus any optional viewers (`magick`, `ffmpeg`, poppler, …) |
+| The computer you **type on** (running the herdr client) | the two key bindings, and Ghostty, kitty or WezTerm |
 
-herdr runs a plugin on the server that owns the pane and never copies plugins
-to SSH hosts. When a devbox workspace is selected, `prefix+f` runs the
-devbox's copy of peek, which reads the devbox's files and renders them there;
-herdr streams the picture to your laptop. If a machine doesn't have peek, the
-key fails with a visible error and nothing else breaks. Installing it on your
-laptop only helps for local panes.
+herdr runs a plugin on the machine that owns the pane and never copies plugins
+to SSH hosts. With a devbox workspace selected, `prefix+f` runs the devbox's
+copy of peek, which reads the devbox's files and renders them there, and herdr
+streams the picture to your screen. If a machine doesn't have peek, the key
+shows an error and nothing else breaks.
 
-Add the keys on the machine you type on (the herdr client):
-
-```toml
-# ~/.config/herdr/config.toml
-[[keys.command]]
-key = "prefix+f"
-type = "plugin_action"
-command = "peek.pick"
-
-[[keys.command]]
-key = "prefix+shift+f"
-type = "plugin_action"
-command = "peek.last"
-```
-
-Images need a terminal that speaks the kitty graphics protocol (Ghostty,
-kitty, WezTerm) with herdr's `[terminal] kitty_graphics` on (the default).
+If `prefix+f` does nothing, run `herdr config check`: it reports a key that
+clashes with another binding. Images also need herdr's
+`[terminal] kitty_graphics` on, which is the default.
 
 ### Options
 
