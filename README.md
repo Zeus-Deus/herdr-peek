@@ -8,36 +8,26 @@ connected with `herdr machine add`.
 
 ![peek opening a screenshot next to an agent](docs/peek-image.png)
 
-## Quick start
+## Install
 
-One command installs the plugin, adds the two keys (`prefix+f`,
-`prefix+shift+f`) to `~/.config/herdr/config.toml` and reloads herdr:
+### One command (recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh
 ```
 
+This installs the plugin, adds the two keys (`prefix+f`, `prefix+shift+f`) to
+`~/.config/herdr/config.toml` and reloads herdr. It backs up your config first,
+never adds the keys twice, leaves your other bindings alone and warns if
+another binding already uses one of peek's keys.
+
 Then, in any pane that shows file paths, press `prefix+f` and the letter next
 to a file. `q` closes the viewer.
 
-You need Python 3 (already on almost every Linux and macOS machine) and a
-terminal that shows images: Ghostty, kitty or WezTerm. Everything else is
-optional; see [What it opens](#what-it-opens). The installer backs up your
-config first, never adds the keys twice, leaves your other bindings alone and
-warns if another binding already uses one of peek's keys.
+### Or the regular herdr way
 
-**Using a remote machine?** Install the plugin where the files are and the
-keys where you type:
-
-```bash
-# on each devbox you connected with `herdr machine add`
-curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --no-keys
-# on your laptop, if you don't need peek for local panes
-curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --keys-only
-```
-
-<details>
-<summary>Prefer to do it by hand?</summary>
+peek is a standard herdr plugin, so herdr's own installer works too. Install
+it, then add the keys yourself:
 
 ```bash
 herdr plugin install Zeus-Deus/herdr-peek --yes
@@ -60,7 +50,55 @@ EOF
 herdr server reload-config
 ```
 
-</details>
+### Update
+
+Run the same command again. It fetches the latest version and leaves your
+keys as they are.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh
+# or: herdr plugin install Zeus-Deus/herdr-peek --yes
+```
+
+An open peek viewer keeps the old version until you close it with `q`.
+
+### Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --uninstall
+```
+
+This removes the plugin, its cache and its two key bindings (after backing up
+`config.toml`; your other bindings stay as they are) and reloads herdr. Your
+peek settings folder is kept if you put anything in it.
+
+The regular herdr way is `herdr plugin uninstall peek`, then delete the
+`# herdr-peek` block from `~/.config/herdr/config.toml` and run
+`herdr server reload-config`.
+
+### Omarchy
+
+Nothing changes. Omarchy ships herdr and keeps its config in the same
+`~/.config/herdr/config.toml`, so install, update and uninstall work as written. If you
+reset that file with `omarchy refresh config herdr/config.toml`, run the
+installer again to put the keys back.
+
+### Remote machines
+
+Install the plugin where the files are and the keys where you type:
+
+```bash
+# on each devbox you connected with `herdr machine add`
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --no-keys
+# on your laptop, if you don't need peek for local panes
+curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --keys-only
+```
+
+### Requirements
+
+Python 3 (already on almost every Linux and macOS machine) and a terminal that
+shows images: Ghostty, kitty or WezTerm. Everything else is optional; see
+[What it opens](#what-it-opens).
 
 ## Use it
 
@@ -132,11 +170,9 @@ has.
 
 ## Install details
 
-peek is a standard herdr plugin (manifest v1, `herdr-plugin.toml`) and installs
-with herdr's own `herdr plugin install`, as in the [Quick start](#quick-start).
-`herdr plugin list` shows it, and running the install command again updates it.
-To work from a checkout instead, run `./install.sh --link .`, which links the
-checkout, checks the optional viewers and prints the key bindings.
+To work from a checkout, run `./install.sh --link .`: it links the checkout,
+checks the optional viewers and adds the keys. `herdr plugin list` shows what
+is installed.
 
 ### Which machine needs what
 
@@ -150,11 +186,6 @@ to SSH hosts. With a devbox workspace selected, `prefix+f` runs the devbox's
 copy of peek, which reads the devbox's files and renders them there, and herdr
 streams the picture to your screen. If a machine doesn't have peek, the key
 shows an error and nothing else breaks.
-
-On Omarchy, which ships herdr, the config is the same
-`~/.config/herdr/config.toml` (Omarchy copies its default there once). If you
-reset it with `omarchy refresh config herdr/config.toml`, run the installer
-again to put the keys back.
 
 If `prefix+f` does nothing, run `herdr config check`: it reports a key that
 clashes with another binding. Images also need herdr's
