@@ -12,6 +12,7 @@ import time
 import traceback
 
 import convert
+import display
 import herdr
 import kinds
 import render
@@ -489,7 +490,9 @@ class AudioView(View):
     def draw(self, box):
         wave_rows = max(3, box.rows // 3)
         out = []
-        png = convert.audio_wave(self.path, box.px[0], int(wave_rows * box.ch)) if convert.which("ffmpeg") else None
+        if not self.app.inline:
+            wave_rows = 0  # the waveform is a picture; skip it where pictures can't show
+        png = convert.audio_wave(self.path, box.px[0], int(wave_rows * box.ch)) if wave_rows and convert.which("ffmpeg") else None
         if png:
             image_id = new_image_id()
             self.image_ids.append(image_id)
@@ -754,7 +757,7 @@ class NotebookView(TextView):
         if k == "i" and self.extra:
             target = self.extra[self.img % len(self.extra)]
             self.img += 1
-            self.app.push_view(ImageView(self.app, target))
+            self.app.push_view(make_view(self.app, target))
             return True
         return TextView.key(self, k, box)
 
@@ -764,10 +767,44 @@ class ErrorView(TextView):
         TextView.__init__(self, app, path, producer=lambda w: ([RED + l + RESET for l in message.rstrip().split("\n")], None))
 
 
+class ExternalView(TextView):
+    """For terminals that can't draw images: open the file in the desktop's viewer."""
+
+    keys_help = "o open again"
+
+    def __init__(self, app, path, line, kind):
+        self.term = display.client_terminal()
+        self.opened = display.can_open_external() and display.open_external(path)
+        TextView.__init__(self, app, path, line, producer=self.card)
+        self.details = kind
+
+    def card(self, width):
+        name = os.path.basename(self.path)
+        term = self.term or "this terminal"
+        if self.opened:
+            head = [GREEN + BOLD + "Opened %s in your default viewer." % name + RESET]
+        else:
+            head = [YELLOW + BOLD + "Can't show %s here." % name + RESET, "", "There's no desktop on this machine to open it in."]
+        return head + [
+            "",
+            MUTED + "%s can't draw images inside herdr. Run herdr in" % term + RESET,
+            MUTED + "Ghostty, kitty or WezTerm to see them right here." + RESET,
+        ], None
+
+    def key(self, k, box):
+        if k == "o" and display.can_open_external():
+            display.open_external(self.path)
+            self.app.toast("opened " + os.path.basename(self.path))
+            return False
+        return TextView.key(self, k, box)
+
+
 def make_view(app, path, line=None):
     if not os.path.exists(path):
         return ErrorView(app, path, "File not found:\n  %s" % path)
     kind = kinds.classify(path)
+    if kind in display.VISUAL_KINDS and not app.inline:
+        return ExternalView(app, path, line, kind)
     try:
         if kind == "dir":
             return DirView(app, path, line)
@@ -840,6 +877,7 @@ class App(object):
     def __init__(self, tab_id):
         self.tab = tab_id
         self.config = state.load_config()
+        self.inline = display.inline_images(self.config)
         self.items = []
         self.index = 0
         self.seq = None
@@ -920,6 +958,7 @@ class App(object):
             return
         self.index %= len(self.items)
         item = self.items[self.index]
+        self.inline = display.inline_images(self.config)  # you may have switched terminals
         self.set_view(make_view(self, item.get("path"), item.get("line")))
 
     def toast(self, text):

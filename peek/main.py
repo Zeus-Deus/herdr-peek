@@ -54,21 +54,28 @@ def items_from(hits):
     return out
 
 
-def ensure_viewer(tab, source_pane):
-    cfg = state.load_config()
+def live_viewer(tab):
+    """The pane id of this tab's open viewer, or None."""
     data = state.read_json(state.viewer_file(tab)) or {}
     pane_id = data.get("pane_id")
-    if pane_id and data.get("pid"):
-        info = herdr.pane_get(pane_id)
-        alive = info is not None and (not data.get("terminal_id") or info.get("terminal_id") == data.get("terminal_id"))
-        if alive:
-            try:
-                os.kill(int(data["pid"]), 0)
-            except (OSError, ValueError):
-                alive = False
-        if alive:
-            herdr.focus_plugin_pane(pane_id)
-            return pane_id
+    if not (pane_id and data.get("pid")):
+        return None
+    info = herdr.pane_get(pane_id)
+    if info is None or (data.get("terminal_id") and info.get("terminal_id") != data.get("terminal_id")):
+        return None
+    try:
+        os.kill(int(data["pid"]), 0)
+    except (OSError, ValueError):
+        return None
+    return pane_id
+
+
+def ensure_viewer(tab, source_pane):
+    cfg = state.load_config()
+    pane_id = live_viewer(tab)
+    if pane_id:
+        herdr.focus_plugin_pane(pane_id)
+        return pane_id
     placement = cfg.get("placement") or "split"
     if placement == "popup":
         # popups are a manifest-only placement; they cover the active pane
@@ -93,6 +100,19 @@ def open_items(ctx_tab, source_pane, items, index):
     if not items:
         return 1
     state.set_current(ctx_tab, items, index, source_pane)
+    if not live_viewer(ctx_tab):
+        # a terminal that can't draw images (foot, Alacritty, …): pop pictures,
+        # videos and PDFs out in the desktop's own viewer instead of an empty split
+        import display
+        import kinds
+
+        path = items[max(0, min(index, len(items) - 1))]["path"]
+        if (
+            kinds.classify(path) in display.VISUAL_KINDS
+            and display.can_open_external()
+            and not display.inline_images(state.load_config())
+        ):
+            return 0 if display.open_external(path) else 1
     return 0 if ensure_viewer(ctx_tab, source_pane) else 1
 
 

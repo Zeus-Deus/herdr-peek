@@ -111,7 +111,7 @@ class Sandbox(object):
             data = data.encode("utf-8")
         os.write(self.client_fd, data)
 
-    def attach_client(self, cols=200, rows=50, cell=(10, 20), on_output=None):
+    def attach_client(self, cols=200, rows=50, cell=(10, 20), on_output=None, via=None):
         """Run an interactive `herdr` client in a private pty (no window needed)."""
         import fcntl
         import pty
@@ -121,6 +121,8 @@ class Sandbox(object):
 
         pid, fd = pty.fork()
         if pid == 0:
+            if via:  # e.g. a launcher named `foot`, so the client's parent looks like that terminal
+                os.execve(via, [via, self.bin], self.env)
             os.execve(self.bin, [self.bin], self.env)
         fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, cols * cell[0], rows * cell[1]))
         self.client_pid, self.client_fd = pid, fd

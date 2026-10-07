@@ -96,9 +96,14 @@ curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.s
 
 ### Requirements
 
-Python 3 (already on almost every Linux and macOS machine) and a terminal that
-shows images: Ghostty, kitty or WezTerm. Everything else is optional; see
-[What it opens](#what-it-opens).
+- **Python 3**, already on almost every Linux and macOS machine.
+- **A terminal that can show images inside herdr: Ghostty, kitty or WezTerm.**
+  foot, Alacritty and most other terminals can't. There, peek opens pictures,
+  videos and PDFs in your normal viewer window instead (on Omarchy: imv, mpv,
+  Evince), the same as opening them from a file manager. Text files still open
+  in the peek split.
+
+Everything else is optional; see [What it opens](#what-it-opens).
 
 ## Use it
 
@@ -200,7 +205,12 @@ placement = "split"   # split | popup | tab | zoomed
 direction = "right"   # right | down (for split)
 alphabet = "asdfghjklqwertyuiopzxcvbnm"
 video_fps = 8
+images = "auto"       # auto | inline | external (always use your normal viewer)
 ```
+
+`images = "auto"` looks at the terminal your herdr window runs in. It can only
+see that when the files are on the same computer as your screen; on a devbox
+you reach with `herdr machine add` it assumes your terminal shows images.
 
 ## How it works
 
@@ -224,6 +234,7 @@ python3 -m unittest discover -s tests                                   # unit t
 python3 tests/e2e.py "$(command -v herdr)"                              # API-level e2e
 uv run --with pyte python3 tests/e2e_input.py "$(command -v herdr)"     # real keys + mouse
 uv run --with pyte python3 tests/e2e_remote.py <laptop-herdr> <devbox-herdr>   # herdr machine add
+python3 tests/e2e_fallback.py "$(command -v herdr)"                     # foot/Alacritty fallback
 python3 scripts/make_demo.py /tmp/peek-demo                             # one file of every kind
 python3 scripts/screenshots.py <herdr-bin> <out>                        # Ghostty screenshots (Hyprland)
 ```
