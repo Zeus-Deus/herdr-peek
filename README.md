@@ -94,14 +94,121 @@ curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.s
 curl -fsSL https://raw.githubusercontent.com/Zeus-Deus/herdr-peek/main/install.sh | sh -s -- --keys-only
 ```
 
+### Laptop-native temporary image previews (opt-in)
+
+This is a **client feature**, separate from the existing server-side Peek
+viewer. It requires a Herdr client that supports `[[keys.client_command]]`
+argv bindings and supplies `HERDR_CLIENT_CONTEXT_JSON`. **Stock Herdr 0.9.1
+clients do not support it.** A pane-owning Herdr 0.9.1 server is supported,
+provided its installed Peek copy includes the native exporter.
+
+On each pane-owning machine, install/update Peek as usual (`--no-keys` for
+remote machines). On the laptop, install/link a current local Peek copy too;
+its Python entrypoint runs locally even when the focused pane is remote. Then:
+
+```bash
+# laptop only; existing compatible Herdr client + local Peek required
+./install.sh --client-native --keys-only
+```
+
+`--client-native` is deliberately **settings-only**, even without
+`--keys-only`: it does not install/uninstall plugins or change server-side
+Peek settings. It discovers the enabled local root with
+`herdr plugin list --json --plugin peek`, verifies core argv-table support
+using isolated config probes. For an existing config it generates a **private
+merged proposal**, never automatically replaces the original: arbitrary editors
+do not share an atomic update lock. Review the proposal and captured baseline,
+reconcile newer edits, and explicitly adopt it before reloading your client.
+Existing shortcut choices and unrelated settings/bindings remain intact. Missing
+bindings use `prefix+f` / `prefix+shift+f`; occupied defaults are refused. An absent
+config is created exclusively; an intervening create is refused. Already-matching
+configs are unchanged. Native uninstall similarly proposes removing only this
+installation's `client_command` entries, never legacy `keys.command` actions.
+The configuration helper needs Python **3.11+**.
+
+The generated local configuration uses an absolute installed path, not a
+shell string (do not copy the placeholder path literally):
+
+```toml
+[[keys.client_command]]
+key = "prefix+f"
+command = ["python3", "/absolute/local/peek-install/peek/main.py", "client-pick"]
+
+[[keys.client_command]]
+key = "prefix+shift+f"
+command = ["python3", "/absolute/local/peek-install/peek/main.py", "client-last"]
+```
+
+- **Pick:** a laptop Zenity list shows paths resolved on the pane-owning
+  server. Select an image to open a temporary PNG in the laptop's default
+  supported foreground image viewer. Cancel does nothing.
+- **Last:** opens the bottom-most image, ignoring lower text/document paths
+  and any active selection. Repeated paths use their bottom-most occurrence.
+- **Other files:** selecting a nonimage gives an explicit error directing you
+  to the ordinary `peek.pick` / `peek.last` actions. Nothing launches on the
+  server desktop. Keep those actions on different unused shortcuts for text,
+  documents, videos and the existing Peek split UI; they and Ctrl+click are
+  unchanged. The native route never silently falls back to server `xdg-open`.
+- **Selections:** when provided by the client, Peek reads the exact
+  `pane.selection.read` coordinates/revision on the owning endpoint, not the
+  laptop clipboard. Unsupported/stale selections are errors; clear the
+  selection to pick visible paths. Herdr 0.9.1 lacks this selection RPC, but
+  visible-path previews work without it.
+
+Laptop requirements: Linux/XDG desktop, Python, `zenity`, `xdg-mime`, and an
+image/png default association such as **imv.desktop, `Exec=imv %F`**. Peek
+resolves that association and launches imv directly, keeping the temporary
+file until that foreground process exits. The supported association subset
+is `imv`, `imv-wayland` or `imv-x11` with exactly `%F` or `%f`; shell wrappers,
+extra arguments, Terminal/DBus launchers and unsupported single-instance
+viewers are rejected visibly. A launcher exiting is not proof a window closed.
+
+The owning machine needs **Linux and ImageMagick 7 (`magick`)**. This confined
+native adapter intentionally supports **PNG sources only**. SVG, JPEG, GIF,
+WebP and other unqualified formats fail visibly; no generic converter or
+original-file fallback is attempted. Existing general Peek conversion is
+unchanged. Only a resized PNG, at most **1600 × 1200** and **8 MiB**, is transferred;
+originals are never transferred as a conversion fallback or modified. PNG source
+headers are checked before any decoder starts: at most 8192 per dimension and
+8 million pixels. The private ImageMagick policy admits only the exact snapshot
+read/output write, denies other resources/coders/modules, delegates and filters,
+and has bounded memory with no disk/map pixel-cache spill. Effective policy
+loading and an inert secondary-resource read denial are verified on each export.
+Source files must
+be regular, nonsymlink files at most **32 MiB**; the picker retains the 256
+most recent candidates. Export rechecks the listed file's device/inode,
+size and nanosecond modification/change times before and after snapshotting.
+Server snapshots/conversions use an isolated temporary directory, not Peek's
+persistent conversion cache. Laptop previews use a **0700** directory and
+**0600** file, removed after viewer exit, failure or handled cancellation.
+Forced SIGKILL/power loss can prevent any process's cleanup finalizers.
+
+SSH uses your already-authenticated configuration and trusted host keys,
+with BatchMode, strict host-key checking, no key updates and bounded timeouts.
+It neither accepts new host keys nor changes `authorized_keys`/SSH config.
+The remote bootstrap is fixed code; context, sessions and chosen paths travel
+as JSON on stdin, never as shell substitutions. Missing/disabled/old remote
+Peek is a visible error, not a server viewer fallback.
+
+To remove just these laptop bindings, **before uninstalling local Peek**:
+
+```bash
+./install.sh --client-native --keys-only --uninstall
+```
+
+Then use the ordinary installer for server-action bindings or plugin removal.
+See [the native helper protocol](docs/client-native-preview.md) for the client
+context contract and headless integration commands.
+
 ### Requirements
 
 - **Python 3**, already on almost every Linux and macOS machine.
 - **A terminal that can show images inside herdr: Ghostty, kitty or WezTerm.**
-  foot, Alacritty and most other terminals can't. There, peek opens pictures,
-  videos and PDFs in your normal viewer window instead (on Omarchy: imv, mpv,
-  Evince), the same as opening them from a file manager. Text files still open
-  in the peek split.
+  foot, Alacritty and most other terminals can't. Legacy Peek actions can open
+  pictures, videos and PDFs in the **pane-owning machine's** normal viewer
+  instead (on Omarchy: imv, mpv, Evince); that is not a laptop file transfer.
+  Text files still open in the Peek split. Use the explicit client-native
+  opt-in above for laptop windows when viewing remote panes.
 
 Everything else is optional; see [What it opens](#what-it-opens).
 
@@ -205,12 +312,15 @@ placement = "split"   # split | popup | tab | zoomed
 direction = "right"   # right | down (for split)
 alphabet = "asdfghjklqwertyuiopzxcvbnm"
 video_fps = 8
-images = "auto"       # auto | inline | external (always use your normal viewer)
+images = "auto"       # auto | inline | external (pane-owning machine's viewer)
 ```
 
-`images = "auto"` looks at the terminal your herdr window runs in. It can only
-see that when the files are on the same computer as your screen; on a devbox
-you reach with `herdr machine add` it assumes your terminal shows images.
+`images = "auto"` runs on the pane-owning machine and heuristically looks for
+local Herdr client processes. It does not know which viewing client invoked an
+action: another local client on the server can affect its choice, and it cannot
+infer laptop desktop ownership. Legacy external windows open on the
+pane-owning machine. The opt-in laptop-native commands above instead use
+explicit client context and do not depend on this detector.
 
 ## How it works
 

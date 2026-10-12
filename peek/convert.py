@@ -89,10 +89,11 @@ def _read(path):
 # --- images ---------------------------------------------------------------
 
 
-def image_png(path, w, h, mode="fit"):
+def image_png(path, w, h, mode="fit", cache=None, allow_original=True):
     """A PNG scaled to fit w x h pixels ("fit") or cropped to it at 1:1 ("actual")."""
     w, h = max(int(w), 16), max(int(h), 16)
-    out = cached("img-%s.png" % key(path, w, h, mode))
+    name = "img-%s.png" % key(path, w, h, mode)
+    out = os.path.join(cache, name) if cache is not None else cached(name)
     if os.path.exists(out):
         return _read(out)
     src = path + "[0]"
@@ -130,7 +131,7 @@ def image_png(path, w, h, mode="fit"):
         ok, _ = run([sips, "-s", "format", "png", "-Z", str(min(w, h)), path, "--out", out])
         if ok and os.path.exists(out):
             return _read(out)
-    if path.lower().endswith(".png"):
+    if allow_original and path.lower().endswith(".png"):
         return _read(path)  # no converter: let the terminal scale the original
     return None
 

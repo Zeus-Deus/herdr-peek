@@ -7,6 +7,7 @@
 #   --no-keys   plugin only (for a devbox you connect to with `herdr machine add`;
 #               keys belong on the computer you type on)
 #   --keys-only key bindings only (for a laptop that only views remote machines)
+#   --client-native settings-only laptop opt-in (installed compatible client + Peek)
 #   --link DIR  link a local checkout instead of installing from GitHub
 #   --uninstall remove the plugin, its key bindings and its cache
 #               (combine with --no-keys / --keys-only to remove just one part)
@@ -20,6 +21,7 @@ herdr="${HERDR_BIN_PATH:-herdr}"
 plugin=1
 keys=1
 link=""
+client_native=0
 uninstall=0
 
 while [ $# -gt 0 ]; do
@@ -27,6 +29,7 @@ while [ $# -gt 0 ]; do
     --no-keys) keys=0 ;;
     --keys-only) plugin=0 ;;
     --link) shift; link="$1" ;;
+    --client-native) client_native=1 ;;
     --uninstall) uninstall=1 ;;
     -h|--help) sed -n '2,15p' "$0" 2>/dev/null || true; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
@@ -72,6 +75,34 @@ command = "peek.last"
 description = "peek: open newest file"
 EOF
 }
+
+# --client-native is deliberately settings-only. Install/link a current local
+# Peek copy first; ordinary invocations retain the old server-action behavior.
+if [ "$client_native" = 1 ]; then
+  [ "$keys" = 1 ] || die "--client-native conflicts with --no-keys"
+  [ -z "$link" ] || die "Link the local plugin first, then run --client-native"
+  command -v python3 >/dev/null 2>&1 || die "client-native configuration needs Python 3.11+"
+  helper="$("$herdr" plugin list --json --plugin peek | python3 -c '
+import json, os, sys
+try:
+    payload=json.load(sys.stdin)
+    plugins=payload.get("result",payload).get("plugins",[])
+    roots=[p["plugin_root"] for p in plugins if p.get("plugin_id")=="peek" and p.get("enabled") is True]
+    if len(roots)!=1 or not os.path.isabs(roots[0]): raise ValueError("enabled local Peek not found")
+    helper=os.path.join(roots[0],"peek","client_install.py")
+    if not os.path.isfile(helper): raise ValueError("update/install Peek locally before --client-native")
+    print(helper)
+except (ValueError,KeyError,TypeError) as exc:
+    print(str(exc),file=sys.stderr); sys.exit(1)
+')" || die "Cannot find the installed local Peek configuration helper"
+  if [ "$uninstall" = 1 ]; then
+    python3 "$helper" --herdr "$herdr" --config "$config" --uninstall
+  else
+    python3 "$helper" --herdr "$herdr" --config "$config"
+  fi
+  say "Settings-only request complete. Review/adopt any proposal before reloading the client. No plugins or server settings were changed."
+  exit 0
+fi
 
 # --- uninstall ---------------------------------------------------------------
 
@@ -156,8 +187,8 @@ fi
 
 if [ "$keys" = 1 ]; then
   mkdir -p "$(dirname "$config")"
-  touch "$config"
-  if grep -q 'command *= *"peek\.pick"' "$config"; then
+  [ -f "$config" ] || touch "$config"
+  if grep -q 'command *= *"peek\.pick"' "$config" || grep -q 'command *=.*[/]peek[/]main.py.*client-pick' "$config"; then
     say "Key bindings already in $config"
   else
     backup_config

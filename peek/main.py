@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""herdr-peek entrypoint: `python3 peek/main.py <pick|last|open|view|picker|doctor>`."""
+"""herdr-peek entrypoint: pick|last|open|view|picker|doctor|client-pick|client-last|native-server."""
 
 import os
 import sys
@@ -199,6 +199,14 @@ def main(argv):
         print(__doc__)
         return 2
     cmd, rest = argv[0], argv[1:]
+    if cmd in ("client-pick", "client-last"):
+        import native_client
+
+        return native_client.main(cmd)
+    if cmd == "native-server":
+        import native_server
+
+        return native_server.main()
     if cmd == "pick":
         return cmd_pick()
     if cmd == "last":
